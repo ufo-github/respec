@@ -15,7 +15,7 @@
 //  - afterEnd: a single function called at the end, after postProcess, with the
 //      same caveats. These two coexist for historical reasons; please not that they
 //      are all considered deprecated and may all be removed.
-
+"use strict";
 (function (GLOBAL) {
     // pubsub
     // freely adapted from http://higginsforpresident.net/js/static/jq.pubsub.js
@@ -68,71 +68,40 @@ if (window.console) {
     });
 }
 
-
-define(
-    ["jquery", "Promise"],
-    function ($) {
-        return {
-            runAll:    function (plugs) {
-                // publish messages for beginning of all and end of all
-                var pluginStack = 0;
-                respecEvents.pub("start-all");
-                respecEvents.sub("start", function () {
-                    pluginStack++;
-                });
-                respecEvents.sub("end", function () {
-                    pluginStack--;
-                    if (!pluginStack) {
-                        respecEvents.pub("end-all");
-                        document.respecDone = true;
-                    }
-                });
-                respecEvents.pub("start", "core/base-runner");
-
-                if (respecConfig.preProcess) {
-                    for (var i = 0; i < respecConfig.preProcess.length; i++) {
-                        try { respecConfig.preProcess[i].apply(this); }
-                        catch (e) { respecEvents.pub("error", e); }
-                    }
-                }
-
-                var pipeline = Promise.resolve();
-                // the first in the plugs is going to be us
-                plugs.shift();
-                plugs.forEach(function(plug) {
-                    pipeline = pipeline.then(function () {
-                        if (plug.run) {
-                            return new Promise(function runPlugin(resolve, reject) {
-                                var result = plug.run.call(plug, respecConfig, document, resolve, respecEvents);
-                                // If the plugin returns a promise, have that
-                                // control the end of the plugin's run.
-                                // Otherwise, assume it'll call resolve() as a
-                                // completion callback.
-                                if (result) {
-                                    resolve(result);
-                                }
-                            }).catch(function(e) {
-                                respecEvents.pub("error", e);
-                                respecEvents.pub("end", "unknown/with-error");
-                            });
-                        }
-                        else return Promise.resolve();
-                    });
-                });
-                return pipeline.then(function() {
-                    if (respecConfig.postProcess) {
-                        for (var i = 0; i < respecConfig.postProcess.length; i++) {
-                            try { respecConfig.postProcess[i].apply(this); }
-                            catch (e) { respecEvents.pub("error", e); }
-                        }
-                    }
-                    if (respecConfig.afterEnd) {
-                        try { respecConfig.afterEnd.apply(window, Array.prototype.slice.call(arguments)); }
-                        catch (e) { respecEvents.pub("error", e); }
-                    }
-                    respecEvents.pub("end", "core/base-runner");
-                });
-            }
-        };
-    }
-);
+define([], function() {
+  return {
+    runAll: function(plugs) {
+      respecEvents.pub("start-all");
+      respecEvents.pub("start", "core/base-runner");
+      ["postProcess", "preProcess", "afterEnd"].map(function(deprecated) {
+        if (deprecated in respecConfig) {
+          var msg = "Using " + deprecated +
+            " in respecConfig is deprecated.";
+          messages.pub("error", msg)
+        }
+      })
+      var promisesToFinish = plugs
+        .filter(function(plug) {
+          // excludes self, non-runnable, and modules that return falsy objects
+          return plug && typeof plug.run === "function" && plug !==
+            this;
+        })
+        .map(function(plug) {
+          // to a promise
+          return new Promise(function(resolve) {
+            plug.run(respecConfig, document, resolve, respecEvents);
+          });
+        });
+      Promise.all(promisesToFinish)
+        .then(function() {
+          respecEvents.pub("end", "core/base-runner");
+          respecEvents.pub("end-all", "core/base-runner");
+          document.respecDone = true;
+        })
+        .catch(function(err) {
+          // Runtime errors should not be reported to user. Only explicity messages.
+          throw err;
+        });
+    },
+  };
+});
