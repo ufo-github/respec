@@ -35,6 +35,16 @@ function replaceMapFilename(respecJs, outPath){
   };
 }
 
+/**
+ * Replaces the version number in the boilerplate.
+ *
+ * @param {String} optimizedJs The optimized script.
+ * @param {String} version The version string.
+ */
+function replaceVersionString(optimizedJs, version){
+  return optimizedJs.replace("<<ReSpec-Version-Number>>", version);
+}
+
  /**
  * Async function that appends the boilerplate to the generated script
  * and writes out the result. It also creates the source map file.
@@ -44,17 +54,10 @@ function replaceMapFilename(respecJs, outPath){
  * @param  {String} version The version of the script.
  * @return {Promise} Resolves when done writing the files.
  */
-function appendBoilerplate(outPath, version) {
+function writeOutput(outPath, version) {
   return async(function*(optimizedJs, sourceMap) {
-    const respecJs = `"use strict";
-/* ReSpec ${version}
-Created by Robin Berjon, http://berjon.com/ (@robinberjon)
-Documentation: http://w3.org/respec/.
-See original source for licenses: https://github.com/w3c/respec */
-window.respecVersion = "${version}";
-${optimizedJs}
-require(['profile-w3c-common']);`;
-    const newSource = replaceMapFilename(respecJs, outPath);
+    let newSource = replaceMapFilename(optimizedJs, outPath);
+    newSource.source = replaceVersionString(newSource.source, version);
     const promiseToWriteJs = fsp.writeFile(outPath, newSource.source, "utf-8");
     const promiseToWriteMap = fsp.writeFile(newSource.mapPath, sourceMap, "utf-8");
     yield Promise.all([promiseToWriteJs, promiseToWriteMap]);
@@ -85,8 +88,18 @@ var Builder = {
     return async.task(function*() {
       // optimisation settings
       const version = options.version || (yield this.getRespecVersion());
-      const outputWritter = appendBoilerplate(options.out, version);
+      const outputWritter = writeOutput(options.out, version);
       const config = {
+        insertRequire: ["profile-w3c-common"],
+        wrap: {
+          startFile: [
+            "tools/inserts/boilerplate.frag",
+            "tools/inserts/wrapperFunction.frag",
+          ],
+          endFile: [
+            "tools/inserts/wrapperFunctionEnd.frag",
+          ],
+        },
         generateSourceMaps: true,
         mainConfigFile: "js/profile-w3c-common.js",
         baseUrl: pth.join(__dirname, "../js/"),
