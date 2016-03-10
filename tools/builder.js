@@ -77,8 +77,9 @@ var Builder = {
    * Async function runs Requirejs' optimizer to generate the output.
    *
    * using a custom configuration.
-   * @param  {[type]} options [description]
-   * @return {[type]}         [description]
+   * @param {Object} output The output options
+   * @param {String} output.out The path where to write the optimized file.
+   * @param {String} output.version The version number to use.
    */
   build(options) {
     return async.task(function*() {
