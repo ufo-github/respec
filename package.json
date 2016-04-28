@@ -70,6 +70,7 @@
     "test:appveyor": "npm run pretest"
   },
   "dependencies": {
+    "almond": "^0.3.2",
     "colors": "^1.1.2",
     "command-line-args": "^2.1.6",
     "command-line-usage": "^2.0.5",

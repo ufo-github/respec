@@ -35,16 +35,6 @@ function replaceMapFilename(respecJs, outPath){
   };
 }
 
-/**
- * Replaces the version number in the boilerplate.
- *
- * @param {String} optimizedJs The optimized script.
- * @param {String} version The version string.
- */
-function replaceVersionString(optimizedJs, version){
-  return optimizedJs.replace("<<ReSpec-Version-Number>>", version);
-}
-
  /**
  * Async function that appends the boilerplate to the generated script
  * and writes out the result. It also creates the source map file.
@@ -57,8 +47,11 @@ function replaceVersionString(optimizedJs, version){
 function writeOutput(outPath, version) {
   return async(function*(optimizedJs, sourceMap) {
     let newSource = replaceMapFilename(optimizedJs, outPath);
-    newSource.source = replaceVersionString(newSource.source, version);
-    const promiseToWriteJs = fsp.writeFile(outPath, newSource.source, "utf-8");
+    const boilerplate = yield fsp.readFile("tools/inserts/boilerplate.frag", "utf-8");
+    const finalSource = boilerplate
+      .concat(newSource.source)
+      .replace("<<ReSpec-Version-Number>>", version);
+    const promiseToWriteJs = fsp.writeFile(outPath, finalSource, "utf-8");
     const promiseToWriteMap = fsp.writeFile(newSource.mapPath, sourceMap, "utf-8");
     yield Promise.all([promiseToWriteJs, promiseToWriteMap]);
   }, Builder);
@@ -91,15 +84,7 @@ var Builder = {
       const outputWritter = writeOutput(options.out, version);
       const config = {
         insertRequire: ["profile-w3c-common"],
-        wrap: {
-          startFile: [
-            "tools/inserts/boilerplate.frag",
-            "tools/inserts/wrapperFunction.frag",
-          ],
-          endFile: [
-            "tools/inserts/wrapperFunctionEnd.frag",
-          ],
-        },
+        include: ["profile-w3c-common"],
         generateSourceMaps: true,
         mainConfigFile: "js/profile-w3c-common.js",
         baseUrl: pth.join(__dirname, "../js/"),
@@ -115,15 +100,14 @@ var Builder = {
           "jquery": "../node_modules/jquery/dist/jquery",
           "marked": "../node_modules/marked/lib/marked",
           "Promise": "../node_modules/promise-polyfill/promise",
-          "requireLib": "../node_modules/requirejs/require",
           "webidl2": "../node_modules/webidl2/lib/webidl2",
         },
-        name: "profile-w3c-common",
+        name: "../node_modules/almond/almond",
         deps: [
           "core/jquery-enhanced",
+          "fetch",
           "jquery",
           "Promise",
-          "requireLib",
         ],
         inlineText: true,
         preserveLicenseComments: false,
