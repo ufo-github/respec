@@ -3,4 +3,7 @@ ignore: {}
 patch:
   'npm:marked:20150520':
     - marked:
-        patched: '2016-06-23T16:23:03.425Z'
+        patched: '2016-06-29T05:46:25.181Z'
+  'npm:request:20160119':
+    - phantomjs-prebuilt > request:
+        patched: '2016-06-29T05:46:25.181Z'
