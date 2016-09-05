@@ -74,7 +74,7 @@
     "highlight.js": "github:isagalaev/highlight.js",
     "marcosc-async": "^3.0.2",
     "marked": "^0.3.6",
-    "nightmare": "^2.6.1",
+    "nightmare": "^2.7.0",
     "prompt": "^1.0.0",
     "snyk": "1.19.1"
   },
