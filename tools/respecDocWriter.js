@@ -78,7 +78,7 @@ const tasks = {
     return async.task(function* () {
       const userData = yield this.makeTempDir(os.tmpdir() + "/respec2html-");
       const nightmare = new Nightmare({
-        show: false,
+        show: true,
         timeout,
         webPreferences: {
           "images": false,
@@ -121,8 +121,8 @@ const tasks = {
         .wait(function () {
           return document.respecIsReady;
         })
-        .wait("#respec-modal-save-snapshot")
-        .click("#respec-modal-save-snapshot")
+        .wait("#respec-button-save-snapshot")
+        .click("#respec-button-save-snapshot")
         .wait(100)
         .evaluate(function () {
           var encodedText = document.querySelector("#respec-save-as-html").href;
