@@ -48,9 +48,13 @@ export async function run(conf, doc, cb) {
       doc.querySelectorAll("pre:not(.idl):not(.nohighlight),code.highlight")
     )
     .map(element => {
+      element.setAttribute("aria-busy", "true");
+      return element;
+    })
+    .map(element => {
       return new Promise((resolve, reject) => {
         if (element.textContent.trim() === "") {
-          return resolve(); // no work to do
+          return resolve(element); // no work to do
         }
         const msg = {
           action: "highlight",
@@ -58,7 +62,7 @@ export async function run(conf, doc, cb) {
           id: Math.random().toString(),
           languages: getLanguageHint(element.classList),
         };
-
+        element.setAttribute("aria-live", "polite");
         worker.postMessage(msg);
         worker.addEventListener("message", function listener(ev) {
           if (ev.data.id !== msg.id) {
@@ -69,9 +73,10 @@ export async function run(conf, doc, cb) {
           if (element.localName === "pre") {
             element.classList.add("hljs");
           }
-          resolve();
+          resolve(element);
         });
         setTimeout(() => {
+          element.setAttribute("aria-busy", "false");
           const errMsg = "Timeout error trying to process: " + msg.code;
           const err = new Error(errMsg);
           reject(err);
@@ -79,7 +84,10 @@ export async function run(conf, doc, cb) {
       });
     });
   try {
-    await Promise.all(promisesToHighlight);
+    const tranformedElements = await Promise.all(promisesToHighlight);
+    tranformedElements.forEach(
+      element => element.setAttribute("aria-busy", "false")
+    );
     doneResolver();
   } catch (err) {
     console.error(err);
